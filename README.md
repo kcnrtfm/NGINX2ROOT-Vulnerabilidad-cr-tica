@@ -468,13 +468,29 @@ Evidencia:
 
 
 
-## Obervabildiad
+## Observabilidad
 
+### Captura y análisis del tráfico de red
 
+Además de comprobar la existencia de la vulnerabilidad, nos interesa observar el comportamiento del protocolo HTTP/2 durante la ejecución de la prueba de concepto.
 
-compeltar aca qeus la hermainta que estmos haciendo etc
+Para ello utilizaremos `tcpdump`, una herramienta que permite capturar paquetes de red y almacenarlos en archivos con formato PCAP para su posterior análisis mediante Wireshark.
 
-```
+El contenedor que ejecuta el cliente Python comparte el namespace de red del contenedor NGINX. La comunicación se establece mediante la interfaz loopback (`lo`), por lo que no atraviesa el bridge de Docker ni las interfaces de red del sistema anfitrión.
+
+### Acceso al namespace de red
+
+GNU/Linux dispone de una herramienta denominada `nsenter`, que permite ejecutar un programa dentro de los namespaces asociados a un proceso existente.
+
+Mediante esta herramienta podemos ejecutar `tcpdump` desde el sistema anfitrión utilizando el namespace de red del contenedor, sin instalar software adicional en su interior.
+
+Como los contenedores son creados y eliminados automáticamente durante la prueba, utilizaremos `docker events` para detectar su inicio y automatizar la captura de tráfico.
+
+### Automatización de la captura
+
+El siguiente script Bash permanece a la espera de eventos de inicio de contenedores Docker. Cuando identifica una instancia de NGINX perteneciente al laboratorio, obtiene el PID de su proceso principal e inicia la captura dentro de su namespace de red.
+
+```bash
 #!/bin/bash
 
 docker events \
@@ -499,24 +515,52 @@ while read -r name; do
 done
 ```
 
-salida
+Los parámetros utilizados en `tcpdump` son:
 
-compeltar
+- `-i lo`: selecciona la interfaz loopback.
+- `-nn`: deshabilita la resolución de nombres y servicios.
+- `-s 0`: captura los paquetes con la longitud máxima predeterminada.
+- `-U`: escribe los paquetes en el archivo sin esperar a completar el buffer de salida.
+- `-w`: almacena la captura en un archivo.
+- `tcp port 80`: limita la captura al tráfico TCP asociado al puerto 80.
 
-```
+El script deberá ejecutarse antes de iniciar la prueba de concepto, desde una terminal independiente. La detección del evento y el inicio de la captura no son simultáneos, por lo que podrían perderse los primeros paquetes.
+
+### Resultados de la captura
+
+Durante la experiencia se obtuvo la siguiente salida:
+
+```text
 1712 packets received by filter
 93 packets dropped by kernel
 610 packets captured
 1220 packets received by filter
 0 packets dropped by kernel
-
 ```
 
-Ficheor genreados
+Estos indicadores permiten conocer la actividad del mecanismo de captura y detectar posibles pérdidas. En esta experiencia, una de las capturas presentó una pérdida de 93 paquetes a nivel del kernel. La información registrada podría estar incompleta.
 
-```
-# ls
+La salida disponible no permite atribuir estos contadores a una versión específica de NGINX.
+
+### Archivos generados
+
+Como resultado de la ejecución se obtienen dos archivos PCAP independientes, correspondientes a las versiones vulnerable y corregida de NGINX.
+
+```text
 nginx2root-compact-1.31.8-selftest-7b1b96c2dfa2.pcap
 nginx2root-compact-1.31.9-selftest-7b1b96c2dfa2.pcap
 ```
 
+Estos archivos permanecen almacenados en el sistema anfitrión incluso después de la eliminación de los contenedores.
+
+### Análisis mediante Wireshark
+
+Los archivos obtenidos pueden abrirse mediante Wireshark para examinar las comunicaciones registradas durante la experiencia.
+
+Para concentrar el análisis en las tramas del protocolo HTTP/2 utilizaremos el siguiente filtro de visualización:
+
+```text
+http2
+```
+
+El objetivo será comparar el comportamiento de ambas versiones de NGINX a partir de las evidencias registradas en las capturas de tráfico.

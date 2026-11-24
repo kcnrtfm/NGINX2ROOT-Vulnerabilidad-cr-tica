@@ -557,16 +557,44 @@ Estos archivos permanecen almacenados en el sistema anfitrión incluso después 
 
 Los archivos obtenidos pueden abrirse mediante Wireshark para examinar las comunicaciones registradas durante la experiencia.
 
-Para concentrar el análisis en las tramas del protocolo HTTP/2 utilizaremos el siguiente filtro de visualización:
+En lugar de visualizar todas las tramas HTTP/2 mediante el filtro `http2`, concentraremos el análisis en los eventos asociados al cierre de la conexión. Para ello utilizaremos el siguiente filtro de visualización:
 
 ```text
-http2
+http2.type == 7 || tcp.flags.fin == 1 || tcp.flags.reset == 1
 ```
 
-El objetivo será comparar el comportamiento de ambas versiones de NGINX a partir de las evidencias registradas en las capturas de tráfico.
+El filtro permite identificar tres tipos de eventos:
 
-Analisis
+- `http2.type == 7`: tramas GOAWAY, utilizadas para comunicar la finalización de una conexión HTTP/2.
+- `tcp.flags.fin == 1`: segmentos TCP que indican la finalización de la transmisión en uno de los sentidos de la conexión.
+- `tcp.flags.reset == 1`: segmentos TCP que indican el restablecimiento o interrupción abrupta de la conexión.
+
+El filtro anterior, `http2`, no permite observar los segmentos de cierre TCP que no transportan tramas HTTP/2. Al combinar ambos niveles del protocolo podemos estudiar cómo finaliza la comunicación, incluso cuando el servidor no envía una trama GOAWAY.
+
+#### NGINX 1.31.8 — versión vulnerable
 
 ![](imgs/1.31.8.png)
 
+En esta captura se observan dos segmentos FIN/ACK:
+
+- Paquete 807: desde el puerto 41580 del cliente hacia el puerto 80 del servidor, a los 18,492132 segundos de captura.
+- Paquete 808: desde el puerto 80 del servidor hacia el puerto 41580 del cliente, a los 18,492422 segundos.
+
+El cliente inicia el cierre y el servidor responde finalizando su extremo de la conexión. Este comportamiento es consistente con el resultado registrado por la prueba de concepto, que informa que la conexión permaneció operativa durante la comprobación.
+
+#### NGINX 1.31.9 — versión corregida
+
 ![](imgs/1.31.9.png)
+
+En esta captura se observan dos paquetes que coinciden con el filtro:
+
+- Paquete 607: segmento procedente del puerto 80 del servidor, que transporta tramas DATA y aparece a los 10,384338 segundos de captura.
+- Paquete 609: segmento FIN/ACK desde el puerto 48254 del cliente hacia el puerto 80 del servidor, a los 10,384555 segundos.
+
+El paquete 607 coincide con el filtro, aunque la columna Info presenta las tramas HTTP/2 que transporta y no muestra explícitamente los flags TCP. Para confirmar qué condición del filtro satisface y determinar si el servidor inició el cierre, es necesario examinar los flags en la sección Transmission Control Protocol del paquete.
+
+#### Comparación de resultados
+
+La finalización de la comunicación se observa aproximadamente ocho segundos antes en la captura de la versión corregida que en la versión vulnerable. Esta diferencia se mide respecto del inicio de cada captura, no necesariamente del inicio exacto de cada conexión.
+
+Los resultados son consistentes con la salida del programa, que registra una conexión operativa en la versión vulnerable y un cierre TCP anticipado en la versión corregida. Sin embargo, un cierre TCP por sí solo no demuestra que una vulnerabilidad haya sido corregida. Las capturas constituyen evidencia complementaria que debe interpretarse junto con los resultados del programa y las posibles pérdidas de paquetes durante la adquisición.

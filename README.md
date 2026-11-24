@@ -468,3 +468,55 @@ Evidencia:
 
 
 
+## Obervabildiad
+
+
+
+compeltar aca qeus la hermainta que estmos haciendo etc
+
+```
+#!/bin/bash
+
+docker events \
+    --filter type=container \
+    --filter event=start \
+    --format '{{.Actor.Attributes.name}}' |
+while read -r name; do
+
+    if [[ "$name" == nginx2root-compact-* ]]; then
+
+        pid=$(docker inspect -f '{{.State.Pid}}' "$name")
+
+        echo "Contenedor detectado: $name"
+        echo "PID: $pid"
+
+        sudo nsenter -t "$pid" -n \
+            tcpdump -i lo -nn -s 0 -U \
+            -w "${name}.pcap" 'tcp port 80' &
+
+    fi
+
+done
+```
+
+salida
+
+compeltar
+
+```
+1712 packets received by filter
+93 packets dropped by kernel
+610 packets captured
+1220 packets received by filter
+0 packets dropped by kernel
+
+```
+
+Ficheor genreados
+
+```
+# ls
+nginx2root-compact-1.31.8-selftest-7b1b96c2dfa2.pcap
+nginx2root-compact-1.31.9-selftest-7b1b96c2dfa2.pcap
+```
+

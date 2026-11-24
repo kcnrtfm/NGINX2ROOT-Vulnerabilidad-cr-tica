@@ -315,3 +315,54 @@ Por lo tanto, identificar la versión anunciada por un servidor constituye un pr
 - Avisos oficiales de seguridad de NGINX: https://nginx.org/en/security_advisories.html
 - Investigación original: https://nginx2root.com/
 - Análisis de seguridad de Censys: https://censys.com/advisory/nginx2root/
+
+## Herramientas y entorno de experimentación
+
+Para realizar las experiencias utilizaremos las herramientas publicadas por Censys Research, que permiten estudiar el comportamiento de las vulnerabilidades NGINX2ROOT en entornos controlados y comparar versiones vulnerables y corregidas de NGINX.
+
+### Herramientas disponibles
+
+El repositorio de Censys Research incluye los siguientes recursos:
+
+- Pruebas de concepto para reproducir el comportamiento de las vulnerabilidades.
+- Herramientas desarrolladas en Python.
+- Capturas de tráfico para analizar las comunicaciones HTTP/2.
+- Evidencias experimentales obtenidas por los investigadores.
+- Herramientas para comprobar la compatibilidad de los entornos.
+
+Nos concentraremos inicialmente en los recursos relacionados con CVE-2026-123007.
+
+### Prueba de concepto
+
+Una prueba de concepto (Proof of Concept o PoC) es una implementación experimental cuyo objetivo es demostrar que una hipótesis técnica puede reproducirse en condiciones determinadas.
+
+En el ámbito de la seguridad informática, una PoC permite demostrar la existencia de una vulnerabilidad, reproducir un comportamiento anómalo o comprobar que una determinada técnica de explotación es viable.
+
+Una prueba de concepto no necesariamente constituye un exploit completo. Podemos distinguir entre:
+
+- **PoC de vulnerabilidad:** demuestra que existe un comportamiento incorrecto en el software.
+- **PoC de explotación:** demuestra que ese comportamiento puede aprovecharse para realizar una operación no prevista por el desarrollador.
+- **Exploit:** código o procedimiento diseñado para aprovechar una vulnerabilidad y conseguir un resultado determinado, como la ejecución remota de código o la elevación de privilegios.
+
+Estas categorías no son excluyentes. Una prueba de concepto también puede implementar un exploit funcional.
+
+En nuestro laboratorio, la prueba de concepto desarrollada por Censys permite demostrar el funcionamiento incorrecto del control de flujo de HTTP/2 y comparar el comportamiento de una versión vulnerable de NGINX con una versión corregida, sin necesidad de ejecutar código arbitrario en el servidor.
+
+Esta distinción es importante porque demostrar la existencia de una vulnerabilidad no equivale necesariamente a demostrar todas sus posibilidades de explotación.
+
+### Entorno de laboratorio
+
+Las experiencias se realizarán sobre un sistema GNU/Linux virtualizado, utilizando Docker para desplegar instancias independientes de NGINX.
+
+Esto nos permitirá trabajar con diferentes versiones y configuraciones del servidor, comparar su comportamiento y reproducir las pruebas sin modificar el sistema operativo principal.
+
+### Obtención y revisión del código fuente
+
+Obtenemos una copia local del repositorio de Censys Research:
+
+```bash
+git clone https://github.com/Censys-Research/nginx2root.git
+cd nginx2root
+```
+
+Antes de ejecutar cualquiera de las herramientas, revisaremos el contenido del repositorio, sus dependencias y las operaciones que realiza cada programa.

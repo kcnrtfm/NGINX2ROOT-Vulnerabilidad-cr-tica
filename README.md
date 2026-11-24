@@ -555,49 +555,43 @@ Estos archivos permanecen almacenados en el sistema anfitrión incluso después 
 
 ### Análisis mediante Wireshark
 
-Los archivos obtenidos pueden abrirse mediante Wireshark para examinar las comunicaciones registradas durante la experiencia.
+Los archivos PCAP permiten examinar el comportamiento observable de ambas versiones de NGINX y contrastarlo con el informe JSON generado por la prueba de concepto.
 
-En lugar de visualizar todas las tramas HTTP/2 mediante el filtro `http2`, concentraremos el análisis en los eventos asociados al cierre de la conexión. Para ello utilizaremos el siguiente filtro de visualización:
+Aplicamos el mismo filtro de visualización a ambas capturas:
 
 ```text
-http2.type == 7 || tcp.flags.fin == 1 || tcp.flags.reset == 1
+http2.type == 8 || http2.type == 6 || http2.type == 7 || tcp.flags.fin == 1 || tcp.flags.reset == 1
 ```
 
-El filtro permite identificar tres tipos de eventos:
+El filtro selecciona los siguientes eventos:
 
-- `http2.type == 7`: tramas GOAWAY, utilizadas para comunicar la finalización de una conexión HTTP/2.
-- `tcp.flags.fin == 1`: segmentos TCP que indican la finalización de la transmisión en uno de los sentidos de la conexión.
-- `tcp.flags.reset == 1`: segmentos TCP que indican el restablecimiento o interrupción abrupta de la conexión.
+- `http2.type == 8`: tramas WINDOW_UPDATE, asociadas al control de flujo de HTTP/2.
+- `http2.type == 6`: tramas PING, utilizadas para comprobar la comunicación HTTP/2.
+- `http2.type == 7`: tramas GOAWAY, asociadas a la finalización de una conexión HTTP/2.
+- `tcp.flags.fin == 1`: segmentos TCP que indican el cierre de un sentido de la conexión.
+- `tcp.flags.reset == 1`: segmentos TCP que indican el restablecimiento de la conexión.
 
-El filtro anterior, `http2`, no permite observar los segmentos de cierre TCP que no transportan tramas HTTP/2. Al combinar ambos niveles del protocolo podemos estudiar cómo finaliza la comunicación, incluso cuando el servidor no envía una trama GOAWAY.
+A diferencia del filtro anterior, que se concentraba en el cierre, este permite relacionar los eventos del protocolo HTTP/2 con la finalización de la comunicación TCP. La indicación TCP ZeroWindow corresponde al control de flujo de TCP y no debe confundirse con las ventanas de HTTP/2.
 
 #### NGINX 1.31.8 — versión vulnerable
 
 ![](imgs/1.31.8.png)
 
-En esta captura se observan dos segmentos FIN/ACK:
+La captura muestra actualizaciones de ventana, un intercambio de tramas PING y posteriormente el cierre TCP iniciado por el cliente. El informe JSON registra el diagnóstico OVER-CREDIT y señala que la conexión permaneció operativa durante la comprobación final.
 
-- Paquete 807: desde el puerto 41580 del cliente hacia el puerto 80 del servidor, a los 18,492132 segundos de captura.
-- Paquete 808: desde el puerto 80 del servidor hacia el puerto 41580 del cliente, a los 18,492422 segundos.
-
-El cliente inicia el cierre y el servidor responde finalizando su extremo de la conexión. Este comportamiento es consistente con el resultado registrado por la prueba de concepto, que informa que la conexión permaneció operativa durante la comprobación.
+La presencia del intercambio PING antes del cierre es consistente con ese diagnóstico. La captura, por sí sola, no acredita los valores exactos de los incrementos ni el indicador ACK de HTTP/2, que no se encuentran desplegados en la imagen.
 
 #### NGINX 1.31.9 — versión corregida
 
 ![](imgs/1.31.9.png)
 
-En esta captura se observan dos paquetes que coinciden con el filtro:
+En el tramo final mostrado se observan actualizaciones de ventana y tráfico DATA del servidor, seguido de un FIN/ACK del cliente. No se observa el intercambio PING final presente en la captura de la versión vulnerable.
 
-- Paquete 607: segmento procedente del puerto 80 del servidor, que transporta tramas DATA y aparece a los 10,384338 segundos de captura.
-- Paquete 609: segmento FIN/ACK desde el puerto 48254 del cliente hacia el puerto 80 del servidor, a los 10,384555 segundos.
-
-El paquete 607 coincide con el filtro, aunque la columna Info presenta las tramas HTTP/2 que transporta y no muestra explícitamente los flags TCP. Para confirmar qué condición del filtro satisface y determinar si el servidor inició el cierre, es necesario examinar los flags en la sección Transmission Control Protocol del paquete.
+El informe JSON registra TCP closed e INCONCLUSIVE, indicando que la comunicación terminó antes de completar la comprobación final. La diferencia observada en Wireshark es compatible con ese resultado. La captura no permite determinar inequívocamente quién inició el cierre sin examinar los flags TCP del segmento del servidor.
 
 #### Correlación de las tres fuentes de evidencia
 
-Para interpretar los resultados de la experiencia debemos considerar conjuntamente el informe JSON generado por la prueba de concepto y las dos capturas de tráfico analizadas mediante Wireshark.
-
-El informe JSON contiene los códigos de salida esperados y obtenidos para cada versión, el resultado de la comparación y los mensajes registrados durante la prueba. Podemos relacionar estos datos con las observaciones de red de la siguiente manera:
+El informe JSON documenta el diagnóstico de la prueba, mientras que las capturas muestran el comportamiento de las comunicaciones. Su comparación permite distinguir entre la continuidad de la comunicación HTTP/2 y su interrupción antes de completar la comprobación.
 
 | Evidencia | NGINX 1.31.8 (vulnerable) | NGINX 1.31.9 (corregido) |
 | --- | --- | --- |
@@ -605,13 +599,11 @@ El informe JSON contiene los códigos de salida esperados y obtenidos para cada 
 | Código de salida obtenido (JSON) | 0 | 1 |
 | Resultado por instancia (JSON) | passed | passed |
 | Diagnóstico registrado (JSON) | OVER-CREDIT | INCONCLUSIVE |
-| Cierre observado en Wireshark | FIN/ACK iniciado por el cliente | Paquete del servidor seguido de FIN/ACK del cliente |
-| Tiempo del primer paquete coincidente con el filtro | 18,492132 s | 10,384338 s |
+| Intercambio PING final visible | Sí | No observado |
+| Cierre TCP | Iniciado por el cliente | FIN/ACK del cliente; iniciador no confirmado |
 
-El campo `passed` indica que el código de salida obtenido coincide con el esperado por el programa. No significa que ambas instancias sean vulnerables. En particular, la instancia corregida presenta un diagnóstico `INCONCLUSIVE`, porque la conexión terminó antes de completarse la comprobación final. Por lo tanto, el resultado global `"passed": true` expresa el éxito del criterio de comparación implementado por el programa, no una validación independiente y concluyente del parche.
+El campo `passed` indica que los códigos de salida obtenidos coinciden con los esperados por la herramienta. El resultado global `"passed": true` no convierte el diagnóstico INCONCLUSIVE de la versión corregida en una validación independiente y concluyente del parche.
 
-En las capturas se observa una finalización de la comunicación aproximadamente ocho segundos antes en la versión corregida, medida respecto del inicio de cada captura. Este comportamiento es compatible con los mensajes del informe JSON, aunque el cierre TCP por sí solo no demuestra la existencia ni la corrección de una vulnerabilidad.
+La evidencia de red respalda el comportamiento diferencial descrito en el JSON: en la versión vulnerable se observa continuidad de la comunicación HTTP/2 antes del cierre, mientras que en la versión corregida no se observa el intercambio final. Lo relevante no es la duración de la conexión por sí sola, sino la diferencia de comportamiento durante la comprobación.
 
-También debemos distinguir entre correlación de resultados y correspondencia exacta entre ejecuciones. El JSON documentado no contiene los nombres de los archivos PCAP ni el identificador de ejecución presente en sus nombres. Por ello, con la información disponible no podemos acreditar que los tres registros pertenezcan a una misma ejecución del laboratorio.
-
-Las capturas aportan evidencia del comportamiento observable en la red, mientras que el JSON documenta la interpretación realizada por la herramienta. La evaluación conjunta debe contemplar las limitaciones de ambas fuentes, incluidas las posibles pérdidas de paquetes y el diagnóstico inconcluso de la instancia corregida.
+Esta correlación tiene límites: el JSON no incluye el identificador de ejecución presente en los nombres de los PCAP, una de las capturas registró pérdidas de paquetes y las imágenes no muestran todos los campos de las tramas. Por ello, no podemos acreditar inequívocamente que los tres registros pertenezcan a una misma ejecución ni verificar todos los detalles del diagnóstico únicamente con las imágenes. La experiencia tampoco demuestra ejecución de código.

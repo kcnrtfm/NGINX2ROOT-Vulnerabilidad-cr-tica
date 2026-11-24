@@ -40,7 +40,26 @@ https://nginx2root.com/
 
 https://github.com/Censys-Research/nginx2root
 
+### Consideraciones éticas y de seguridad
 
+Este laboratorio tiene una finalidad exclusivamente educativa y de investigación en seguridad informática. Las técnicas y herramientas utilizadas deben aplicarse únicamente sobre sistemas propios o sobre infraestructuras para las cuales se disponga de autorización expresa.
+
+El hacking ético implica comprender el funcionamiento de las vulnerabilidades, reproducirlas en condiciones controladas y utilizar el conocimiento adquirido para mejorar la seguridad de los sistemas informáticos.
+
+Antes de realizar cualquier experiencia de este tipo, es importante considerar las siguientes recomendaciones:
+
+- **Utilizar entornos virtualizados y aislados:** realizar las pruebas dentro de máquinas virtuales o contenedores, evitando comprometer el sistema operativo principal y otros equipos de la red.
+- **Controlar la exposición del laboratorio:** evitar publicar servicios vulnerables en Internet y restringir las comunicaciones de red a las estrictamente necesarias para la experimentación.
+- **Utilizar herramientas de fuentes confiables:** priorizar pruebas de concepto y exploits publicados por investigadores reconocidos, equipos de seguridad y proyectos con antecedentes verificables.
+- **Revisar el código antes de ejecutarlo:** incluso cuando una herramienta provenga de una fuente reconocida, es fundamental comprender qué operaciones realiza, qué recursos utiliza y qué comunicaciones establece.
+- **Utilizar asistentes de inteligencia artificial como apoyo:** herramientas como ChatGPT o Claude pueden ayudarnos a analizar código, identificar comportamientos sospechosos y comprender el funcionamiento de un exploit. Sin embargo, sus resultados no sustituyen la revisión técnica ni garantizan que el código sea seguro.
+- **Evitar el uso de información sensible:** no utilizar credenciales reales, claves privadas, datos personales ni configuraciones pertenecientes a entornos de producción.
+- **Preparar mecanismos de recuperación:** utilizar snapshots de máquinas virtuales y entornos descartables que permitan recuperar el estado inicial del laboratorio.
+- **Aplicar el principio de privilegios mínimos:** evitar ejecutar herramientas con permisos administrativos cuando no sea estrictamente necesario.
+
+Debemos tener presente que las herramientas utilizadas para investigar vulnerabilidades también pueden representar un riesgo para quien las ejecuta. Un exploit descargado de Internet podría contener código malicioso dirigido contra el propio investigador.
+
+El objetivo no es solamente comprender cómo se explota una vulnerabilidad, sino también desarrollar una metodología de experimentación responsable, segura y reproducible.
 
 ## Análisis técnico de la vulnerabilidad CVE-2026-123007
 

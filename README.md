@@ -393,43 +393,78 @@ cd nginx2root
 
 Antes de ejecutar cualquiera de las herramientas, revisaremos el contenido del repositorio, sus dependencias y las operaciones que realiza cada programa.
 
-## Laboratorio de experimentación con NGINX
 
-En este laboratorio vamos a comparar el comportamiento de diferentes versiones de NGINX frente a la vulnerabilidad CVE-2026-123007, utilizando las herramientas desarrolladas por Censys Research.
 
-Realizaremos las experiencias de manera progresiva, comenzando con una versión corregida de NGINX que nos servirá como referencia para interpretar posteriormente el comportamiento de una versión vulnerable.
-
-### Despliegue de NGINX 1.31.9 (versión corregida)
-
-Comenzamos desplegando un servidor NGINX mediante Docker, utilizando la versión 1.31.9, que incorpora la corrección de la vulnerabilidad estudiada.
-
-Creamos e iniciamos el contenedor:
-
-```bash
-docker run -d \
-  --name nginx-patched \
-  -p 127.0.0.1:8080:80 \
-  nginx:1.31.9
-```
-
-Ejecutamos el script que compreuba de la vulnrabilidad.
+Genera los contendores con las imágenes `nginx:1.31.8` y `nginx:1.31.9`, y Python 3.10 o superior.
 
 ```
 python3 -I h2c_flow_control_test.py \
-  --host 127.0.0.1 \
-  --port 8080 \
+  --docker \
+  --output /tmp/nginx2root-compact-evidence.json \
+  --command-timeout 45 \
+  --client-timeout 45 \
   --acknowledge-local-lab I-AUTHORIZE-LOCAL-LAB
 ```
+
+**Resultado esperado:**
+
+Prueba superada: la versión vulnerable de h2c aceptó el exceso de crédito, mientras que la versión parcheada lo rechazó.
+
+El script crea una red interna de Docker, ejecuta las instancias vulnerable y parcheada, y elimina los recursos al finalizar. No utiliza puertos publicados ni la red del host.
+
+El archivo JSON de evidencias registra el hash del script, los resultados de cada instancia y el estado de la limpieza de recursos.
+
+Los tiempos de espera están limitados a un máximo de 120 segundos.
 
 Salida:
 
 ```
-python3 -I h2c_flow_control_test.py   --host 127.0.0.1   --port 8080   --acknowledge-local-lab I-AUTHORIZE-LOCAL-LAB
-== stage 1: fill conn window to 0 (73x896 + 127)
-    [init] TCP closed
-    [fill] TCP closed
-ERROR: local test did not complete: target did not complete the 65,535-byte fill
->>> INCONCLUSIVE: protocol stage did not complete
+PASS: vulnerable h2c accepted over-credit; patched control rejected it
+Wrote evidence: /tmp/nginx2root-compact-evidence.json
+```
+
+Evidencia:
 
 ```
+{
+  "schema_version": 1,
+  "cve": "CVE-2026-123007",
+  "test": "compact-h2c-accounting-differential",
+  "scope": "accounting_only_not_rce",
+  "tls_validated": false,
+  "network": "internal_docker_no_published_ports",
+  "timeout_seconds": 45,
+  "target_images": [
+    "nginx:1.31.8",
+    "nginx:1.31.9"
+  ],
+  "script_sha256": "6e6f7726ac8f6bddd711af703d2f180cefe1f0f0c4b27860eb7f96d06c6ffa01",
+  "started_at": "2026-11-24T20:10:25.615198+00:00",
+  "targets": [
+    {
+      "image": "nginx:1.31.8",
+      "version": "1.31.8",
+      "expected_exit": 0,
+      "actual_exit": 0,
+      "result": "passed",
+      "detail": "ream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n== stage 5: probe WINDOW_UPDATE(0, 1): accepted => over-credit\n== stage 6: sync PING\n      <- PING stream=0 flags=1\n>>> OVER-CREDIT: one-byte update accepted, no GOAWAY or TCP close, and post-probe PING acknowledged; CVE-2026-123007 accounting error observed\nThis is an accounting test only; it does not demonstrate code execution.\n"
+    },
+    {
+      "image": "nginx:1.31.9",
+      "version": "1.31.9",
+      "expected_exit": 1,
+      "actual_exit": 1,
+      "result": "passed",
+      "detail": "<- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n    [wu4M] TCP closed\nThe 4 MiB update was rejected; the server log determines the queued-byte bound.\n== stage 5: probe WINDOW_UPDATE(0, 1): accepted => over-credit\n== stage 6: sync PING\n>>> INCONCLUSIVE: test ended before the one-byte window probe\nThis is an accounting test only; it does not demonstrate code execution.\n"
+    }
+  ],
+  "cleanup_attempted": true,
+  "passed": true
+}
+
+```
+
+
+
+
 

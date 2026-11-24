@@ -366,3 +366,11 @@ cd nginx2root
 ```
 
 Antes de ejecutar cualquiera de las herramientas, revisaremos el contenido del repositorio, sus dependencias y las operaciones que realiza cada programa.
+
+### Registro e interpretación de las evidencias
+
+Para que una experiencia sea reproducible, debemos registrar la versión de NGINX utilizada, su configuración, las características del entorno y los resultados observados durante cada prueba.
+
+La interrupción de una conexión TCP o la finalización inesperada de una prueba no demuestra por sí misma la existencia de una vulnerabilidad. Del mismo modo, un resultado inconcluso no permite afirmar que el servidor esté protegido.
+
+La comparación con una versión corregida y la revisión de los registros del servidor permiten contextualizar las observaciones y distinguir los resultados experimentales de las hipótesis iniciales.

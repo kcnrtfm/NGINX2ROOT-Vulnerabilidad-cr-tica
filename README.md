@@ -564,3 +564,9 @@ http2
 ```
 
 El objetivo será comparar el comportamiento de ambas versiones de NGINX a partir de las evidencias registradas en las capturas de tráfico.
+
+Analisis
+
+![](imgs/1.31.8.png)
+
+![](imgs/1.31.9.png)

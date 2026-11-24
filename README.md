@@ -593,8 +593,25 @@ En esta captura se observan dos paquetes que coinciden con el filtro:
 
 El paquete 607 coincide con el filtro, aunque la columna Info presenta las tramas HTTP/2 que transporta y no muestra explícitamente los flags TCP. Para confirmar qué condición del filtro satisface y determinar si el servidor inició el cierre, es necesario examinar los flags en la sección Transmission Control Protocol del paquete.
 
-#### Comparación de resultados
+#### Correlación de las tres fuentes de evidencia
 
-La finalización de la comunicación se observa aproximadamente ocho segundos antes en la captura de la versión corregida que en la versión vulnerable. Esta diferencia se mide respecto del inicio de cada captura, no necesariamente del inicio exacto de cada conexión.
+Para interpretar los resultados de la experiencia debemos considerar conjuntamente el informe JSON generado por la prueba de concepto y las dos capturas de tráfico analizadas mediante Wireshark.
 
-Los resultados son consistentes con la salida del programa, que registra una conexión operativa en la versión vulnerable y un cierre TCP anticipado en la versión corregida. Sin embargo, un cierre TCP por sí solo no demuestra que una vulnerabilidad haya sido corregida. Las capturas constituyen evidencia complementaria que debe interpretarse junto con los resultados del programa y las posibles pérdidas de paquetes durante la adquisición.
+El informe JSON contiene los códigos de salida esperados y obtenidos para cada versión, el resultado de la comparación y los mensajes registrados durante la prueba. Podemos relacionar estos datos con las observaciones de red de la siguiente manera:
+
+| Evidencia | NGINX 1.31.8 (vulnerable) | NGINX 1.31.9 (corregido) |
+| --- | --- | --- |
+| Código de salida esperado (JSON) | 0 | 1 |
+| Código de salida obtenido (JSON) | 0 | 1 |
+| Resultado por instancia (JSON) | passed | passed |
+| Diagnóstico registrado (JSON) | OVER-CREDIT | INCONCLUSIVE |
+| Cierre observado en Wireshark | FIN/ACK iniciado por el cliente | Paquete del servidor seguido de FIN/ACK del cliente |
+| Tiempo del primer paquete coincidente con el filtro | 18,492132 s | 10,384338 s |
+
+El campo `passed` indica que el código de salida obtenido coincide con el esperado por el programa. No significa que ambas instancias sean vulnerables. En particular, la instancia corregida presenta un diagnóstico `INCONCLUSIVE`, porque la conexión terminó antes de completarse la comprobación final. Por lo tanto, el resultado global `"passed": true` expresa el éxito del criterio de comparación implementado por el programa, no una validación independiente y concluyente del parche.
+
+En las capturas se observa una finalización de la comunicación aproximadamente ocho segundos antes en la versión corregida, medida respecto del inicio de cada captura. Este comportamiento es compatible con los mensajes del informe JSON, aunque el cierre TCP por sí solo no demuestra la existencia ni la corrección de una vulnerabilidad.
+
+También debemos distinguir entre correlación de resultados y correspondencia exacta entre ejecuciones. El JSON documentado no contiene los nombres de los archivos PCAP ni el identificador de ejecución presente en sus nombres. Por ello, con la información disponible no podemos acreditar que los tres registros pertenezcan a una misma ejecución del laboratorio.
+
+Las capturas aportan evidencia del comportamiento observable en la red, mientras que el JSON documenta la interpretación realizada por la herramienta. La evaluación conjunta debe contemplar las limitaciones de ambas fuentes, incluidas las posibles pérdidas de paquetes y el diagnóstico inconcluso de la instancia corregida.

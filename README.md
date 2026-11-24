@@ -332,6 +332,32 @@ El repositorio de Censys Research incluye los siguientes recursos:
 
 Nos concentraremos inicialmente en los recursos relacionados con CVE-2026-123007.
 
+**Script de pruebas**
+
+El script `h2c_flow_control_test.py` admite los siguientes argumentos:
+
+| Argumento                 | Valor por defecto | Función                                                      |
+| ------------------------- | ----------------- | ------------------------------------------------------------ |
+| `--host`                  | `127.0.0.1`       | Dirección IP del servidor. Solo admite loopback.             |
+| `--port`                  | `80`              | Puerto del servidor.                                         |
+| `--tls`                   | Desactivado       | Utiliza HTTP/2 sobre TLS.                                    |
+| `--docker`                | Desactivado       | Ejecuta las pruebas en contenedores Docker aislados.         |
+| `--platform`              | `native`          | Arquitectura Docker: `native`, `linux/amd64` o `linux/arm64`. |
+| `--output`                | Ninguno           | Guarda los resultados en un archivo JSON en modo Docker.     |
+| `--versions`              | `1.31.8,1.31.9`   | Versiones de NGINX que se quieren evaluar.                   |
+| `--command-timeout`       | `45`              | Tiempo máximo por operación Docker, entre 1 y 120 segundos.  |
+| `--client-timeout`        | `45`              | Tiempo máximo por prueba, entre 1 y 120 segundos.            |
+| `--acknowledge-local-lab` | Obligatorio       | Requiere el valor `I-AUTHORIZE-LOCAL-LAB`.                   |
+| `--help`                  | —                 | Muestra la ayuda del script.                                 |
+
+**Restricciones y particularidades:**
+
+- `--docker` y `--tls` son mutuamente excluyentes.
+- Las versiones admitidas son desde `1.30.0` hasta `1.30.6` y desde `1.31.0` hasta `1.31.9`.
+- El soporte TLS no está validado.
+- Aunque `--platform` permite seleccionar ARM64, el contenedor cliente tiene AMD64 fijado explícitamente en el código.
+- La prueba comprueba un error de contabilización del control de flujo HTTP/2, no la ejecución remota de código (RCE).
+
 ### Prueba de concepto
 
 Una prueba de concepto (Proof of Concept o PoC) es una implementación experimental cuyo objetivo es demostrar que una hipótesis técnica puede reproducirse en condiciones determinadas.
@@ -367,10 +393,43 @@ cd nginx2root
 
 Antes de ejecutar cualquiera de las herramientas, revisaremos el contenido del repositorio, sus dependencias y las operaciones que realiza cada programa.
 
-### Registro e interpretación de las evidencias
+## Laboratorio de experimentación con NGINX
 
-Para que una experiencia sea reproducible, debemos registrar la versión de NGINX utilizada, su configuración, las características del entorno y los resultados observados durante cada prueba.
+En este laboratorio vamos a comparar el comportamiento de diferentes versiones de NGINX frente a la vulnerabilidad CVE-2026-123007, utilizando las herramientas desarrolladas por Censys Research.
 
-La interrupción de una conexión TCP o la finalización inesperada de una prueba no demuestra por sí misma la existencia de una vulnerabilidad. Del mismo modo, un resultado inconcluso no permite afirmar que el servidor esté protegido.
+Realizaremos las experiencias de manera progresiva, comenzando con una versión corregida de NGINX que nos servirá como referencia para interpretar posteriormente el comportamiento de una versión vulnerable.
 
-La comparación con una versión corregida y la revisión de los registros del servidor permiten contextualizar las observaciones y distinguir los resultados experimentales de las hipótesis iniciales.
+### Despliegue de NGINX 1.31.9 (versión corregida)
+
+Comenzamos desplegando un servidor NGINX mediante Docker, utilizando la versión 1.31.9, que incorpora la corrección de la vulnerabilidad estudiada.
+
+Creamos e iniciamos el contenedor:
+
+```bash
+docker run -d \
+  --name nginx-patched \
+  -p 127.0.0.1:8080:80 \
+  nginx:1.31.9
+```
+
+Ejecutamos el script que compreuba de la vulnrabilidad.
+
+```
+python3 -I h2c_flow_control_test.py \
+  --host 127.0.0.1 \
+  --port 8080 \
+  --acknowledge-local-lab I-AUTHORIZE-LOCAL-LAB
+```
+
+Salida:
+
+```
+python3 -I h2c_flow_control_test.py   --host 127.0.0.1   --port 8080   --acknowledge-local-lab I-AUTHORIZE-LOCAL-LAB
+== stage 1: fill conn window to 0 (73x896 + 127)
+    [init] TCP closed
+    [fill] TCP closed
+ERROR: local test did not complete: target did not complete the 65,535-byte fill
+>>> INCONCLUSIVE: protocol stage did not complete
+
+```
+

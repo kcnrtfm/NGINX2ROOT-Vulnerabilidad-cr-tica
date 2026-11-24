@@ -167,7 +167,7 @@ CVE-2026-123007 es una vulnerabilidad de corrupción de memoria que se produce d
 
 NGINX mantiene variables internas que representan la cantidad de datos que pueden transmitirse dentro de una conexión HTTP/2 y sus respectivos streams.
 
-El problema se encuentra en las operaciones aritméticas utilizadas para administrar estos valores. Cuando el resultado de una operación excede el rango que puede representar la variable utilizada, puede producirse un desbordamiento de entero (integer overflow).
+El problema se encuentra en las operaciones aritméticas utilizadas para administrar estos valores. Desde la perspectiva del protocolo, el servidor debe mantener una contabilización coherente del crédito disponible y respetar sus límites. El diagnóstico experimental de este laboratorio se refiere a esa contabilización, no a la observación directa de las operaciones de memoria. Cuando el resultado de una operación excede el rango que puede representar la variable utilizada, puede producirse un desbordamiento de entero (integer overflow).
 
 Como consecuencia, NGINX puede trabajar con valores incorrectos al administrar sus estructuras internas y las regiones de memoria asociadas al procesamiento de HTTP/2.
 
@@ -393,9 +393,9 @@ cd nginx2root
 
 Antes de ejecutar cualquiera de las herramientas, revisaremos el contenido del repositorio, sus dependencias y las operaciones que realiza cada programa.
 
+### Ejecución de la prueba de concepto
 
-
-Genera los contendores con las imágenes `nginx:1.31.8` y `nginx:1.31.9`, y Python 3.10 o superior.
+La experiencia utiliza Python 3.10 o superior y Docker. El programa despliega dos instancias independientes de NGINX, una correspondiente a la versión vulnerable y otra a la versión corregida, para comparar sus resultados. La ejecución registrada utiliza las imágenes `nginx:1.31.8` y `nginx:1.31.9`.
 
 ```
 python3 -I h2c_flow_control_test.py \
@@ -412,7 +412,7 @@ Prueba superada: la versión vulnerable de h2c aceptó el exceso de crédito, mi
 
 El script crea una red interna de Docker, ejecuta las instancias vulnerable y parcheada, y elimina los recursos al finalizar. No utiliza puertos publicados ni la red del host.
 
-El archivo JSON de evidencias registra el hash del script, los resultados de cada instancia y el estado de la limpieza de recursos.
+El archivo JSON de evidencias registra el hash del script, los resultados de cada instancia y si se intentó limpiar los recursos. Este último campo no acredita por sí solo que la limpieza haya concluido correctamente.
 
 Los tiempos de espera están limitados a un máximo de 120 segundos.
 
@@ -423,56 +423,41 @@ PASS: vulnerable h2c accepted over-credit; patched control rejected it
 Wrote evidence: /tmp/nginx2root-compact-evidence.json
 ```
 
-Evidencia:
+**Evidencia experimental:**
 
-```
+El [informe JSON completo](evidence/nginx2root-compact-evidence.json) conserva los registros originales de la experiencia. A continuación se presenta un extracto de sus campos estructurados:
+
+```json
 {
-  "schema_version": 1,
-  "cve": "CVE-2026-123007",
-  "test": "compact-h2c-accounting-differential",
   "scope": "accounting_only_not_rce",
   "tls_validated": false,
-  "network": "internal_docker_no_published_ports",
-  "timeout_seconds": 45,
-  "target_images": [
-    "nginx:1.31.8",
-    "nginx:1.31.9"
-  ],
-  "script_sha256": "6e6f7726ac8f6bddd711af703d2f180cefe1f0f0c4b27860eb7f96d06c6ffa01",
-  "started_at": "2026-11-24T20:10:25.615198+00:00",
   "targets": [
     {
-      "image": "nginx:1.31.8",
       "version": "1.31.8",
       "expected_exit": 0,
       "actual_exit": 0,
-      "result": "passed",
-      "detail": "ream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n== stage 5: probe WINDOW_UPDATE(0, 1): accepted => over-credit\n== stage 6: sync PING\n      <- PING stream=0 flags=1\n>>> OVER-CREDIT: one-byte update accepted, no GOAWAY or TCP close, and post-probe PING acknowledged; CVE-2026-123007 accounting error observed\nThis is an accounting test only; it does not demonstrate code execution.\n"
+      "result": "passed"
     },
     {
-      "image": "nginx:1.31.9",
       "version": "1.31.9",
       "expected_exit": 1,
       "actual_exit": 1,
-      "result": "passed",
-      "detail": "<- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8191\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n      <- DATA stream=157 flags=0 len=8192\n    [wu4M] TCP closed\nThe 4 MiB update was rejected; the server log determines the queued-byte bound.\n== stage 5: probe WINDOW_UPDATE(0, 1): accepted => over-credit\n== stage 6: sync PING\n>>> INCONCLUSIVE: test ended before the one-byte window probe\nThis is an accounting test only; it does not demonstrate code execution.\n"
+      "result": "passed"
     }
   ],
   "cleanup_attempted": true,
   "passed": true
 }
-
 ```
 
-
-
+El campo `detail` del informe original contiene los diagnósticos de cada instancia: OVER-CREDIT para la versión vulnerable e INCONCLUSIVE para la versión corregida. Estos resultados se interpretan junto con las capturas en la sección de observabilidad.
 
 
 ## Observabilidad
 
 ### Captura y análisis del tráfico de red
 
-Además de comprobar la existencia de la vulnerabilidad, nos interesa observar el comportamiento del protocolo HTTP/2 durante la ejecución de la prueba de concepto.
+Además de evaluar el comportamiento diferencial de las versiones, nos interesa observar el comportamiento del protocolo HTTP/2 durante la ejecución de la prueba de concepto.
 
 Para ello utilizaremos `tcpdump`, una herramienta que permite capturar paquetes de red y almacenarlos en archivos con formato PCAP para su posterior análisis mediante Wireshark.
 
@@ -607,3 +592,11 @@ El campo `passed` indica que los códigos de salida obtenidos coinciden con los 
 La evidencia de red respalda el comportamiento diferencial descrito en el JSON: en la versión vulnerable se observa continuidad de la comunicación HTTP/2 antes del cierre, mientras que en la versión corregida no se observa el intercambio final. Lo relevante no es la duración de la conexión por sí sola, sino la diferencia de comportamiento durante la comprobación.
 
 Esta correlación tiene límites: el JSON no incluye el identificador de ejecución presente en los nombres de los PCAP, una de las capturas registró pérdidas de paquetes y las imágenes no muestran todos los campos de las tramas. Por ello, no podemos acreditar inequívocamente que los tres registros pertenezcan a una misma ejecución ni verificar todos los detalles del diagnóstico únicamente con las imágenes. La experiencia tampoco demuestra ejecución de código.
+
+## Conclusión
+
+El laboratorio permitió relacionar los fundamentos del control de flujo de HTTP/2 con los resultados de una prueba experimental y con el comportamiento observable de dos versiones de NGINX. La separación entre la evidencia registrada por el programa y la obtenida mediante la captura de tráfico permite evaluar el alcance de las conclusiones sin depender exclusivamente del resultado automatizado.
+
+Los registros respaldan un comportamiento diferencial entre las versiones estudiadas. El diagnóstico de la versión vulnerable es consistente con la continuidad de la comunicación observada en Wireshark. En la versión corregida, el diagnóstico inconcluso y las limitaciones de captura impiden considerar esta experiencia una validación independiente y definitiva del parche.
+
+La experiencia no demuestra corrupción de memoria directamente, ejecución remota de código ni elevación de privilegios. Su alcance es el estudio experimental del comportamiento del protocolo y la interpretación crítica de las evidencias obtenidas en un entorno controlado.
